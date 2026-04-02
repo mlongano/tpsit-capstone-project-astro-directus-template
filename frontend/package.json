@@ -1,0 +1,13 @@
+{
+  "name": "frontend",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "@directus/sdk": "^21.2.0",
+    "astro": "^6.1.0"
+  }
+}

@@ -1,0 +1,55 @@
+services:
+  directus:
+    image: directus/directus:11.14.1
+    container_name: directus
+    ports:
+      - "8055:8055"
+    volumes:
+      - ./backend/database:/directus/database
+      - ./backend/uploads:/directus/uploads
+      - ./backend/extensions:/directus/extensions
+    environment:
+      DB_CLIENT: "sqlite3"
+      DB_FILENAME: "/directus/database/data.db"
+      SECRET: "${SECRET}"
+      ADMIN_EMAIL: "${ADMIN_EMAIL}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD}"
+      CORS_ENABLED: "true"
+      CORS_ORIGIN: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8055/server/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  swagger-ui:
+    image: swaggerapi/swagger-ui
+    container_name: swagger-ui
+    ports:
+      - "8010:8080"
+    environment:
+      URL: "http://localhost:8055/server/specs/oas?access_token=${DIRECTUS_ADMIN_TOKEN}"
+      PERSIST_AUTHORIZATION: "true"
+    depends_on:
+      directus:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: frontend
+    ports:
+      - "4321:4321"
+    volumes:
+      # Monta tutto il progetto per hot-reload su qualsiasi file
+      - ./frontend:/app
+      # Volume anonimo: preserva i node_modules installati nel container
+      # ed evita che la cartella (vuota) dell'host li sovrascriva
+      - /app/node_modules
+    environment:
+      # URL interno Docker: Astro (server-side) raggiunge Directus
+      # attraverso la rete Docker, non tramite localhost
+      DIRECTUS_URL: "http://directus:8055"
+    depends_on:
+      directus:
+        condition: service_healthy

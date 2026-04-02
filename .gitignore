@@ -1,0 +1,20 @@
+# Variabili d'ambiente (contengono segreti)
+.env
+
+# Directus uploads (file caricati dagli utenti)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Directus extensions build artifacts
+backend/extensions/*
+!backend/extensions/.gitkeep
+
+# Node.js
+node_modules/
+
+# Astro build output
+frontend/dist/
+
+# OS
+.DS_Store
+Thumbs.db

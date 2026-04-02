@@ -1,0 +1,99 @@
+---
+/**
+ * Homepage — legge il contenuto dalla collezione singleton "homepage" di Directus.
+ *
+ * Per modificare il contenuto: aprire Directus (http://localhost:8055),
+ * cliccare su "Homepage" nella sidebar, modificare i campi, salvare.
+ * Ricaricare questa pagina per vedere le modifiche.
+ */
+
+import Base from "../layouts/Base.astro";
+import { directus } from "../lib/directus";
+import { readSingleton } from "@directus/sdk";
+
+let homepage;
+let error;
+
+try {
+  homepage = await directus.request(readSingleton("homepage"));
+} catch (e) {
+  error = e instanceof Error ? e.message : "Errore di connessione a Directus";
+}
+---
+
+<Base title={homepage?.titolo_sito ?? "Home"}>
+  {
+    error ? (
+      <section class="error">
+        <h1>⚠️ Directus non raggiungibile</h1>
+        <p>Verifica che i container siano avviati:</p>
+        <pre><code>docker compose up -d</code></pre>
+        <p>
+          Poi esegui lo script di setup se è il primo avvio:
+        </p>
+        <pre><code>node scripts/setup.mjs</code></pre>
+        <details>
+          <summary>Dettaglio errore</summary>
+          <pre>{error}</pre>
+        </details>
+      </section>
+    ) : (
+      <section class="hero">
+        <h1>{homepage.titolo_sito}</h1>
+        <p class="subtitle">{homepage.sottotitolo}</p>
+        <div class="description" set:html={homepage.descrizione} />
+      </section>
+    )
+  }
+</Base>
+
+<style>
+  .hero {
+    text-align: center;
+    padding-block: 4rem;
+  }
+
+  .hero h1 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--color-primary);
+    margin-bottom: 0.5rem;
+  }
+
+  .subtitle {
+    font-size: 1.25rem;
+    color: var(--color-muted);
+    margin-bottom: 2rem;
+  }
+
+  .description {
+    max-width: 640px;
+    margin-inline: auto;
+    text-align: left;
+    line-height: 1.8;
+  }
+
+  .error {
+    padding-block: 3rem;
+  }
+
+  .error h1 {
+    margin-bottom: 1rem;
+  }
+
+  .error pre {
+    background: #f3f4f6;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    margin-block: 0.5rem 1.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    overflow-x: auto;
+  }
+
+  details {
+    margin-top: 1rem;
+    color: var(--color-muted);
+    font-size: 0.875rem;
+  }
+</style>

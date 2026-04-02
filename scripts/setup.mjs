@@ -1,0 +1,335 @@
+#!/usr/bin/env node
+
+/**
+ * Setup iniziale del template Directus + Astro.
+ *
+ * Eseguire UNA SOLA VOLTA dopo il primo `docker compose up -d`.
+ * Lo script:
+ *   1. Autentica come admin e ottiene un token temporaneo
+ *   2. Configura il token statico sul profilo admin
+ *   3. Crea la collezione singleton "homepage"
+ *   4. Inserisce il contenuto iniziale della homepage
+ *
+ * Uso:
+ *   node scripts/setup.mjs
+ */
+
+import { readFileSync } from "fs";
+import { resolve, dirname } from "path";
+import { fileURLToPath } from "url";
+
+// ── Configurazione ───────────────────────────────────────────
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// Legge il .env dalla radice del progetto
+function loadEnv() {
+  const envPath = resolve(__dirname, "..", ".env");
+  const env = {};
+  try {
+    const content = readFileSync(envPath, "utf-8");
+    for (const line of content.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      const [key, ...rest] = trimmed.split("=");
+      env[key.trim()] = rest.join("=").trim();
+    }
+  } catch {
+    console.error("Errore: file .env non trovato. Eseguire: cp .env.example .env");
+    process.exit(1);
+  }
+  return env;
+}
+
+const env = loadEnv();
+
+const DIRECTUS_URL = "http://localhost:8055";
+const ADMIN_EMAIL = env.ADMIN_EMAIL || "admin@example.com";
+const ADMIN_PASSWORD = env.ADMIN_PASSWORD || "admin123";
+const ADMIN_TOKEN = env.DIRECTUS_ADMIN_TOKEN || "dev-admin-static-token";
+
+// ── Helpers ──────────────────────────────────────────────────
+
+async function waitForDirectus(maxAttempts = 30) {
+  console.log("⏳ Attendo che Directus sia pronto...");
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const res = await fetch(`${DIRECTUS_URL}/server/health`);
+      if (res.ok) {
+        console.log("✅ Directus è pronto\n");
+        return;
+      }
+    } catch {
+      // Directus non ancora raggiungibile
+    }
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+  console.error("❌ Directus non raggiungibile dopo 60 secondi. Verificare che i container siano avviati.");
+  process.exit(1);
+}
+
+async function api(method, path, body, token) {
+  const headers = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const res = await fetch(`${DIRECTUS_URL}${path}`, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`${method} ${path} → ${res.status}: ${text}`);
+  }
+
+  // Alcune risposte sono vuote (204)
+  const contentType = res.headers.get("content-type");
+  if (contentType?.includes("application/json")) {
+    return res.json();
+  }
+  return null;
+}
+
+// ── Step 1: Autenticazione ───────────────────────────────────
+
+async function authenticate() {
+  console.log("🔑 Autenticazione come admin...");
+  const { data } = await api("POST", "/auth/login", {
+    email: ADMIN_EMAIL,
+    password: ADMIN_PASSWORD,
+  });
+  console.log("✅ Autenticazione riuscita\n");
+  return data.access_token;
+}
+
+// ── Step 2: Token statico admin ──────────────────────────────
+
+async function setupAdminToken(accessToken) {
+  console.log("🔧 Configurazione token statico admin...");
+
+  // Recupera l'ID dell'utente admin
+  const { data: users } = await api(
+    "GET",
+    `/users?filter[email][_eq]=${ADMIN_EMAIL}&fields=id`,
+    null,
+    accessToken
+  );
+
+  if (!users.length) {
+    throw new Error(`Utente ${ADMIN_EMAIL} non trovato`);
+  }
+
+  const adminId = users[0].id;
+
+  // Imposta il token statico
+  await api("PATCH", `/users/${adminId}`, { token: ADMIN_TOKEN }, accessToken);
+  console.log(`✅ Token statico configurato: ${ADMIN_TOKEN}\n`);
+}
+
+// ── Step 3: Collezione singleton "homepage" ──────────────────
+
+async function createHomepageCollection(accessToken) {
+  console.log("📦 Creazione collezione homepage...");
+
+  // Verifica se la collezione esiste già
+  try {
+    await api("GET", "/collections/homepage", null, accessToken);
+    console.log("ℹ️  La collezione homepage esiste già, salto la creazione\n");
+    return;
+  } catch {
+    // Non esiste, la creiamo
+  }
+
+  // Crea la collezione come singleton
+  await api(
+    "POST",
+    "/collections",
+    {
+      collection: "homepage",
+      meta: {
+        singleton: true,
+        icon: "home",
+        note: "Contenuto della homepage del sito",
+        sort: 1,
+      },
+      schema: {
+        name: "homepage",
+      },
+    },
+    accessToken
+  );
+
+  // Crea i campi
+  const fields = [
+    {
+      field: "titolo_sito",
+      type: "string",
+      meta: {
+        interface: "input",
+        sort: 1,
+        width: "full",
+        note: "Titolo principale mostrato nell'hero della homepage",
+      },
+      schema: { default_value: "Il Nostro Progetto" },
+    },
+    {
+      field: "sottotitolo",
+      type: "string",
+      meta: {
+        interface: "input",
+        sort: 2,
+        width: "full",
+        note: "Sottotitolo o tagline sotto il titolo principale",
+      },
+      schema: { default_value: "Una breve descrizione del progetto" },
+    },
+    {
+      field: "descrizione",
+      type: "text",
+      meta: {
+        interface: "input-rich-text-md",
+        sort: 3,
+        width: "full",
+        note: "Testo di presentazione in formato Markdown",
+      },
+      schema: {
+        default_value:
+          "Benvenuti nel nostro sito. Questo contenuto è gestito tramite **Directus** e renderizzato con **Astro**.",
+      },
+    },
+    {
+      field: "immagine_hero",
+      type: "uuid",
+      meta: {
+        interface: "file-image",
+        sort: 4,
+        width: "full",
+        note: "Immagine di sfondo o illustrazione per l'hero section",
+      },
+      schema: {},
+    },
+  ];
+
+  for (const field of fields) {
+    await api("POST", `/fields/homepage`, field, accessToken);
+  }
+
+  console.log("✅ Collezione homepage creata con campi: titolo_sito, sottotitolo, descrizione, immagine_hero\n");
+}
+
+// ── Step 4: Contenuto iniziale ───────────────────────────────
+
+async function seedHomepageContent(accessToken) {
+  console.log("📝 Inserimento contenuto iniziale homepage...");
+
+  // Verifica se il contenuto esiste già
+  try {
+    const { data } = await api("GET", "/items/homepage", null, accessToken);
+    if (data) {
+      console.log("ℹ️  Il contenuto homepage esiste già, salto il seed\n");
+      return;
+    }
+  } catch {
+    // Non esiste, lo creiamo
+  }
+
+  await api(
+    "POST",
+    "/items/homepage",
+    {
+      titolo_sito: "Il Nostro Progetto",
+      sottotitolo: "Una breve descrizione del progetto",
+      descrizione:
+        "Benvenuti nel nostro sito. Questo contenuto è gestito tramite **Directus** e renderizzato con **Astro**.\n\nModifica questo testo dal pannello Directus per vederlo cambiare nel frontend.",
+    },
+    accessToken
+  );
+
+  console.log("✅ Contenuto homepage inserito\n");
+}
+
+// ── Step 5: Permessi pubblici ────────────────────────────────
+
+async function setupPublicPermissions(accessToken) {
+  console.log("🔓 Configurazione permessi pubblici...");
+
+  // Recupera la policy pubblica
+  const { data: policies } = await api(
+    "GET",
+    "/policies?filter[name][_eq]=$t:public_label&fields=id",
+    null,
+    accessToken
+  );
+
+  if (!policies.length) {
+    console.log("⚠️  Policy pubblica non trovata, salto i permessi\n");
+    return;
+  }
+
+  const publicPolicyId = policies[0].id;
+
+  // Permesso lettura homepage (singleton)
+  await api(
+    "POST",
+    "/permissions",
+    {
+      policy: publicPolicyId,
+      collection: "homepage",
+      action: "read",
+      fields: ["*"],
+    },
+    accessToken
+  );
+
+  // Permesso lettura file pubblici (per immagine_hero)
+  try {
+    await api(
+      "POST",
+      "/permissions",
+      {
+        policy: publicPolicyId,
+        collection: "directus_files",
+        action: "read",
+        fields: ["*"],
+      },
+      accessToken
+    );
+  } catch {
+    // Potrebbe già esistere
+    console.log("ℹ️  Permesso lettura file probabilmente già presente");
+  }
+
+  console.log("✅ Permessi pubblici configurati: lettura homepage e file\n");
+}
+
+// ── Main ─────────────────────────────────────────────────────
+
+async function main() {
+  console.log("╔══════════════════════════════════════════════╗");
+  console.log("║  Setup Template Directus + Astro             ║");
+  console.log("╚══════════════════════════════════════════════╝\n");
+
+  await waitForDirectus();
+
+  const accessToken = await authenticate();
+  await setupAdminToken(accessToken);
+  await createHomepageCollection(accessToken);
+  await seedHomepageContent(accessToken);
+  await setupPublicPermissions(accessToken);
+
+  console.log("════════════════════════════════════════════════");
+  console.log("  Setup completato!");
+  console.log("");
+  console.log("  Frontend:    http://localhost:4321");
+  console.log("  Directus:    http://localhost:8055");
+  console.log(`               ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`);
+  console.log("");
+  console.log("  Swagger UI:  http://localhost:8010");
+  console.log("════════════════════════════════════════════════");
+}
+
+main().catch((err) => {
+  console.error("\n❌ Errore durante il setup:", err.message);
+  process.exit(1);
+});
