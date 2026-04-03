@@ -1,6 +1,6 @@
 services:
   directus:
-    image: directus/directus:11.14.1
+    image: directus/directus:11.17.1
     container_name: directus
     ports:
       - "8055:8055"
@@ -16,20 +16,28 @@ services:
       ADMIN_PASSWORD: "${ADMIN_PASSWORD}"
       CORS_ENABLED: "true"
       CORS_ORIGIN: "true"
+      PUBLIC_URL: "http://localhost:8055"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8055/server/health || exit 1"]
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:8055/server/health',(r)=>{let d='';r.on('data',c=>d+=c);r.on('end',()=>process.exit(r.statusCode===200?0:1))}).on('error',()=>process.exit(1))\""]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 15s
 
   swagger-ui:
     image: swaggerapi/swagger-ui
     container_name: swagger-ui
     ports:
       - "8010:8080"
+    volumes:
+      - ./backend/swagger-initializer.js:/usr/share/nginx/html/swagger-initializer.js
+      - ./backend/docker-entrypoint.sh:/docker-entrypoint.sh:ro
+      - ./.env:/.env:ro
     environment:
+      DIRECTUS_ADMIN_TOKEN: "${DIRECTUS_ADMIN_TOKEN}"
       URL: "http://localhost:8055/server/specs/oas?access_token=${DIRECTUS_ADMIN_TOKEN}"
       PERSIST_AUTHORIZATION: "true"
+    entrypoint: ["/docker-entrypoint.sh"]
     depends_on:
       directus:
         condition: service_healthy
