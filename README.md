@@ -32,15 +32,16 @@ node scripts/setup.mjs
 ```
 
 > Lo script `setup.mjs` richiede Node.js 18+. Puoi eseguirlo dall'host o dentro il container:
+>
 > `docker compose exec -e DIRECTUS_ADMIN_TOKEN -e ADMIN_EMAIL -e ADMIN_PASSWORD frontend node /app/scripts/setup.mjs`
 
 Apri nel browser:
 
 | Servizio   | URL                   |
 | ---------- | --------------------- |
-| Frontend   | http://localhost:4321  |
-| Directus   | http://localhost:8055  |
-| Swagger UI | http://localhost:8010  |
+| Frontend   | http://localhost:4321 |
+| Directus   | http://localhost:8055 |
+| Swagger UI | http://localhost:8010 |
 
 Credenziali admin: `ADMIN_EMAIL` / `ADMIN_PASSWORD` (vedi `.env`)
 
