@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@directus/sdk": "^21.2.0",
-    "astro": "^6.1.0"
+    "astro": "^6.1.0",
+    "marked": "^17.0.5"
   }
 }
