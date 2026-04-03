@@ -133,34 +133,38 @@ async function createHomepageCollection(accessToken) {
   console.log("📦 Creazione collezione homepage...");
 
   // Verifica se la collezione esiste già
+  let collectionExists = false;
   try {
     await api("GET", "/collections/homepage", null, accessToken);
-    console.log("ℹ️  La collezione homepage esiste già, salto la creazione\n");
-    return;
+    collectionExists = true;
   } catch {
-    // Non esiste, la creiamo
+    // Non esiste
   }
 
-  // Crea la collezione come singleton
-  await api(
-    "POST",
-    "/collections",
-    {
-      collection: "homepage",
-      meta: {
-        singleton: true,
-        icon: "home",
-        note: "Contenuto della homepage del sito",
-        sort: 1,
+  if (!collectionExists) {
+    // Crea la collezione come singleton
+    await api(
+      "POST",
+      "/collections",
+      {
+        collection: "homepage",
+        meta: {
+          singleton: true,
+          icon: "home",
+          note: "Contenuto della homepage del sito",
+          sort: 1,
+        },
+        schema: {
+          name: "homepage",
+        },
       },
-      schema: {
-        name: "homepage",
-      },
-    },
-    accessToken
-  );
+      accessToken
+    );
+  } else {
+    console.log("ℹ️  La collezione homepage esiste già\n");
+  }
 
-  // Crea i campi
+  // Crea i campi (anche se la collezione esiste già)
   const fields = [
     {
       field: "titolo_sito",
@@ -202,17 +206,49 @@ async function createHomepageCollection(accessToken) {
       field: "immagine_hero",
       type: "uuid",
       meta: {
+        special: ["file"],
         interface: "file-image",
-        sort: 4,
+        display: "image",
+        sort: 5,
         width: "full",
-        note: "Immagine di sfondo o illustrazione per l'hero section",
       },
-      schema: {},
+      schema: {
+        data_type: "char",
+        max_length: 36,
+        is_nullable: true,
+        foreign_key_table: "directus_files",
+        foreign_key_column: "id",
+      },
     },
   ];
 
   for (const field of fields) {
-    await api("POST", `/fields/homepage`, field, accessToken);
+    try {
+      await api("POST", `/fields/homepage`, field, accessToken);
+    } catch {
+      // Campo già esiste
+    }
+  }
+
+  // Crea la relazione per il campo immagine (file-image)
+  try {
+    await api("POST", "/relations", {
+      collection: "homepage",
+      field: "immagine_hero",
+      related_collection: "directus_files",
+      meta: {
+        many_collection: "homepage",
+        many_field: "immagine_hero",
+        one_collection: "directus_files",
+        one_deselect_action: "nullify",
+      },
+      schema: {
+        on_update: "NO ACTION",
+        on_delete: "SET NULL",
+      },
+    }, accessToken);
+  } catch {
+    // Relazione già esiste
   }
 
   console.log("✅ Collezione homepage creata con campi: titolo_sito, sottotitolo, descrizione, immagine_hero\n");
@@ -331,6 +367,24 @@ async function setupPublicPermissions(accessToken) {
   console.log("✅ Permessi pubblici configurati: lettura homepage e file\n");
 }
 
+// ── Step 6: Configurazione progetto ─────────────────────────
+
+async function setupProjectSettings(accessToken) {
+  console.log("⚙️  Configurazione progetto Directus...");
+
+  await api(
+    "PATCH",
+    "/settings",
+    {
+      project_owner: ADMIN_EMAIL,
+      org_name: "Template Project",
+    },
+    accessToken
+  );
+
+  console.log("✅ Progetto configurato: owner e org_name\n");
+}
+
 // ── Main ─────────────────────────────────────────────────────
 
 async function main() {
@@ -345,6 +399,7 @@ async function main() {
   await createHomepageCollection(accessToken);
   await seedHomepageContent(accessToken);
   await setupPublicPermissions(accessToken);
+  await setupProjectSettings(accessToken);
 
   console.log("════════════════════════════════════════════════");
   console.log("  Setup completato!");
