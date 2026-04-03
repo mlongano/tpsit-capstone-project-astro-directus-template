@@ -223,29 +223,57 @@ async function createHomepageCollection(accessToken) {
 async function seedHomepageContent(accessToken) {
   console.log("📝 Inserimento contenuto iniziale homepage...");
 
+  const homepageContent = {
+    titolo_sito: "Il Nostro Progetto",
+    sottotitolo: "Una breve descrizione del progetto",
+    descrizione: `# Benvenuti nel nostro sito!
+
+Questo contenuto è scritto in **Markdown** e viene renderizzato automaticamente dal frontend.
+
+## Caratteristiche principali
+
+- Markup leggibile e portabile
+- Convertibile in HTML, PDF, ePub
+- Ideale per contenuti CMS
+
+### Formattazione inline
+
+Puoi usare il **grassetto**, il *corsivo*, o anche \`codice inline\` per termini tecnici.
+
+### Liste
+
+1. Primo elemento della lista
+2. Secondo elemento
+3. Terzo elemento
+
+> Le citazioni vengono stilizzate con una barra laterale colorata.
+
+### Codice
+
+\`\`\`javascript
+const saluto = "Ciao, mondo!";
+console.log(saluto);
+\`\`\`
+
+---
+
+*Prova a modificare questo contenuto in Directus!*`,
+  };
+
   // Verifica se il contenuto esiste già
   try {
     const { data } = await api("GET", "/items/homepage", null, accessToken);
     if (data) {
-      console.log("ℹ️  Il contenuto homepage esiste già, salto il seed\n");
+      // Usa PATCH per aggiornare il contenuto esistente
+      await api("PATCH", "/items/homepage", homepageContent, accessToken);
+      console.log("✅ Contenuto homepage aggiornato\n");
       return;
     }
   } catch {
     // Non esiste, lo creiamo
   }
 
-  await api(
-    "POST",
-    "/items/homepage",
-    {
-      titolo_sito: "Il Nostro Progetto",
-      sottotitolo: "Una breve descrizione del progetto",
-      descrizione:
-        "Benvenuti nel nostro sito. Questo contenuto è gestito tramite **Directus** e renderizzato con **Astro**.\n\nModifica questo testo dal pannello Directus per vederlo cambiare nel frontend.",
-    },
-    accessToken
-  );
-
+  await api("POST", "/items/homepage", homepageContent, accessToken);
   console.log("✅ Contenuto homepage inserito\n");
 }
 
