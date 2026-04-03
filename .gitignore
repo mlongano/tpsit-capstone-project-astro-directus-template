@@ -11,9 +11,11 @@ backend/extensions/*
 
 # Node.js
 node_modules/
+frontend/node_modules/
 
 # Astro build output
 frontend/dist/
+frontend/.astro/
 
 # OS
 .DS_Store
