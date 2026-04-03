@@ -44,6 +44,18 @@ cd il-mio-progetto
 cp .env.example .env
 ```
 
+Il file `.env` contiene le variabili già configurate con valori di sviluppo:
+
+| Variabile | Default | Descrizione |
+| --------- | ------- | ----------- |
+| `SECRET` | `dev-secret-...` | Chiave per i token JWT (ok per dev) |
+| `ADMIN_EMAIL` | `admin@example.com` | Email admin |
+| `ADMIN_PASSWORD` | `admin123` | Password admin |
+| `DIRECTUS_ADMIN_TOKEN` | `dev-admin-static-token` | Token per Swagger e API |
+
+Per il development puoi usare i valori di default senza modifiche.
+In produzione cambia almeno `SECRET` e le credenziali admin.
+
 ### 2. Avvia i container
 
 ```bash
@@ -79,7 +91,7 @@ Lo script esegue automaticamente:
 Apri nel browser:
 
 - http://localhost:4321 — il frontend Astro con il contenuto della homepage
-- http://localhost:8055 — il pannello Directus (accedi con `admin@example.com` / `admin123`)
+- http://localhost:8055 — il pannello Directus (accedi con `ADMIN_EMAIL` / `ADMIN_PASSWORD` dal `.env`)
 - http://localhost:8010 — Swagger UI con la documentazione delle API
 
 Da questo momento puoi modificare i file in `frontend/src/` con il tuo editor: il browser si aggiorna automaticamente grazie all'hot-reload.
@@ -102,7 +114,7 @@ Il pannello è l'interfaccia dove si gestiscono i dati: creare collezioni, defin
 4. Aggiungi i campi necessari (testo, numero, immagine, relazione, ecc.)
 5. Salva
 
-La collezione è immediatamente disponibile via API:
+La collezione è disponibile via API (richiede autenticazione o permessi pubblici, vedi sezione "Permessi"):
 
 ```
 GET  http://localhost:8055/items/articoli
@@ -277,11 +289,18 @@ DELETE /items/{collezione}/{id}     → elimina record
 
 ### Autenticazione in Swagger
 
-Per le richieste che richiedono autenticazione:
+L'autenticazione è automatica: il token admin viene letto dalla variabile
+`DIRECTUS_ADMIN_TOKEN` nel file `.env` e iniettato in tutte le richieste.
 
-1. Clicca il pulsante **Authorize** (icona lucchetto in alto)
-2. Nel campo Value inserisci: `Bearer dev-admin-static-token`
-3. Clicca **Authorize** e poi **Close**
+Non è necessario cliccare il pulsante Authorize — funziona già di default.
+
+### Limitazioni sui filtri
+
+Swagger UI ha un problema noto con il formato filtri di Directus. Se un filtro
+genera errori, prova:
+
+- Usare **Postman** o **Insomnia** per testare query con filtri complessi
+- O usa il pannello Directus (http://localhost:8055/admin) per filtrare i dati
 
 ### Query utili
 

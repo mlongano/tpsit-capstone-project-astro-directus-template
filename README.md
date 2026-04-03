@@ -44,7 +44,7 @@ Apri nel browser:
 | Directus   | http://localhost:8055  |
 | Swagger UI | http://localhost:8010  |
 
-Credenziali admin: `admin@example.com` / `admin123`
+Credenziali admin: `ADMIN_EMAIL` / `ADMIN_PASSWORD` (vedi `.env`)
 
 ## Struttura del progetto
 
@@ -77,7 +77,7 @@ Credenziali admin: `admin@example.com` / `admin123`
 2. **Astro** interroga le API lato server e produce HTML
 3. **Swagger UI** documenta le API e permette di testarle dal browser
 
-Il template include una collezione singleton `homepage` come esempio. Modifica i campi in Directus, ricarica la pagina Astro, vedi i cambiamenti.
+Il template include una collezione singleton `homepage` come esempio. Modifica i campi in Directus, ricarica la pagina Astro, vedi i cambiamenti. Le modifiche ai file in `frontend/src/` si riflettono automaticamente nel browser grazie all'hot-reload.
 
 ## Prossimi passi
 
