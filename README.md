@@ -31,10 +31,8 @@ docker compose up -d
 node scripts/setup.mjs
 ```
 
-> Lo script `setup.mjs` richiede Node.js 22+ sulla macchina host. In alternativa
-> puoi eseguirlo dentro il container frontend:
-> `docker compose exec frontend node /app/scripts-host/setup.mjs`
-> oppure installare Node.js temporaneamente solo per questo passaggio.
+> Lo script `setup.mjs` richiede Node.js 18+. Puoi eseguirlo dall'host o dentro il container:
+> `docker compose exec -e DIRECTUS_ADMIN_TOKEN -e ADMIN_EMAIL -e ADMIN_PASSWORD frontend node /app/scripts/setup.mjs`
 
 Apri nel browser:
 

@@ -22,7 +22,7 @@ import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// Legge il .env dalla radice del progetto
+// Legge il .env dalla radice del progetto, o usa variabili d'ambiente
 function loadEnv() {
   const envPath = resolve(__dirname, "..", ".env");
   const env = {};
@@ -35,18 +35,18 @@ function loadEnv() {
       env[key.trim()] = rest.join("=").trim();
     }
   } catch {
-    console.error("Errore: file .env non trovato. Eseguire: cp .env.example .env");
-    process.exit(1);
+    // usa variabili d'ambiente se .env non trovato
   }
   return env;
 }
 
 const env = loadEnv();
 
-const DIRECTUS_URL = "http://localhost:8055";
-const ADMIN_EMAIL = env.ADMIN_EMAIL || "admin@example.com";
-const ADMIN_PASSWORD = env.ADMIN_PASSWORD || "admin123";
-const ADMIN_TOKEN = env.DIRECTUS_ADMIN_TOKEN || "dev-admin-static-token";
+// Use Docker network URL if running inside container, otherwise localhost
+const DIRECTUS_URL = process.env.DIRECTUS_URL || "http://localhost:8055";
+const ADMIN_EMAIL = env.ADMIN_EMAIL || process.env.ADMIN_EMAIL || "admin@example.com";
+const ADMIN_PASSWORD = env.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || "admin123";
+const ADMIN_TOKEN = env.DIRECTUS_ADMIN_TOKEN || process.env.DIRECTUS_ADMIN_TOKEN || "dev-admin-static-token";
 
 // ── Helpers ──────────────────────────────────────────────────
 

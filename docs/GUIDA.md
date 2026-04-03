@@ -424,10 +424,5 @@ docker compose up -d --build frontend
 
 ### `node scripts/setup.mjs` fallisce
 
-Lo script richiede Node.js 22+ (per il supporto nativo di `fetch`). Se non hai Node.js sull'host, puoi eseguirlo dentro il container:
-
-```bash
-docker compose exec frontend node /app/scripts/setup.mjs
-```
-
-Nota: in questo caso lo script deve raggiungere Directus a `http://directus:8055` (rete Docker interna). Potrebbe essere necessario modificare temporaneamente l'URL nello script.
+Lo script richiede Node.js 18+. Puoi eseguirlo dall'host o dentro il container:
+`docker compose exec -e DIRECTUS_ADMIN_TOKEN -e ADMIN_EMAIL -e ADMIN_PASSWORD frontend node /app/scripts/setup.mjs`

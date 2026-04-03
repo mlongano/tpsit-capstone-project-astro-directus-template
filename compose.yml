@@ -28,7 +28,7 @@ services:
     image: swaggerapi/swagger-ui
     container_name: swagger-ui
     ports:
-      - "8010:8080"
+      - "8010:80"
     volumes:
       - ./backend/swagger-initializer.js:/usr/share/nginx/html/swagger-initializer.js
       - ./backend/docker-entrypoint.sh:/docker-entrypoint.sh:ro
@@ -54,6 +54,8 @@ services:
       # Volume anonimo: preserva i node_modules installati nel container
       # ed evita che la cartella (vuota) dell'host li sovrascriva
       - /app/node_modules
+      # Monta gli script per poterli eseguire dentro il container
+      - ./scripts:/app/scripts:ro
     environment:
       # URL interno Docker: Astro (server-side) raggiunge Directus
       # attraverso la rete Docker, non tramite localhost
